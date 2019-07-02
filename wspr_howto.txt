@@ -1,0 +1,7 @@
+run ntpdate or update time in system clock settings
+direct_samp=2
+gqrx to wspr bookmark
+sound output to virtual0
+wsjtx
+/.local/share/WSJT-X/ALL_WSPR.TXT
+
