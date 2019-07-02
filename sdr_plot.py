@@ -141,7 +141,7 @@ projection = ccrs.LambertConformal()
 ax = plt.axes(projection=projection, aspect='auto')
 
 
-ax.plot(lon_list, lat_list, 'o')
+ax.plot(lon_list, lat_list, 'b.', ms=1.0)
 #ax.plot(la1k_lon, la1k_lat, 'o')
 
 #shapename = 'admin_1_states_provinces_lakes_shp'
