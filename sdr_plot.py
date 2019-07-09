@@ -91,41 +91,55 @@ def GetCallSignInfo(callsign):
 ####################################################
         
 GetApiKey()
-GetCallSignInfo('N2NOM')
-GetCallSignInfo('KE8KW')
+#GetCallSignInfo('N2NOM')
+#GetCallSignInfo('KE8KW')
 
 lat_list = []
 lon_list = []
 callsigns = []
 
 desired_countries = []
+desired_states = []
 
 if len(sys.argv) > 1:
     filename = sys.argv[1]
 else:
     filename = "ALL_WSPR.TXT"
 
+print("loading file")
+
 lineList = [line.rstrip('\n') for line in open(filename)]
 
+print("file loaded")
+
+#progress = 0
+
 for line in lineList:
+    #progress = progress + 1
+    #print(progress,"/",len(lineList))
     #print(line)
-    latitude, longitude = locator_to_latlong(line.split()[7])
-
-    callsign = line.split()[6]
-
-    if callsign == '<...>':
+    if ("FT8" in line): 
+        #latitude, longitude = locator_to_latlong(line.split()[7])
         callsign = line.split()[7]
-        #latitude, longitude = locator_to_latlong(line.split()[8])
+        if callsign == "CQ":
+            callsign = line.split()[8]
+    else:
+        #latitude, longitude = locator_to_latlong(line.split()[7])
+        callsign = line.split()[6]
+
+        if callsign == '<...>':
+            callsign = line.split()[7]
 
     if callsign not in callsigns:
 
         callsigns.append(callsign)
         try:
             contact_dict = GetCallSignInfo(callsign)
-            if contact_dict['country'] == 'United States':
-                print(contact_dict['call'],contact_dict['lat'],contact_dict['lon'],contact_dict['state'])    
+            if contact_dict['country'] == 'United States' and contact_dict['state'] not in desired_states:
+                #print(contact_dict['call'],contact_dict['lat'],contact_dict['lon'],contact_dict['state'])    
+                desired_states.append(contact_dict['state'])
             else:
-                print(contact_dict['call'],contact_dict['lat'],contact_dict['lon'],contact_dict['country'])
+                #print(contact_dict['call'],contact_dict['lat'],contact_dict['lon'],contact_dict['country'])
                 if contact_dict['country'] not in desired_countries:
                     desired_countries.append(contact_dict['country'])
                     #desired_countries.append('Norway')
@@ -185,19 +199,23 @@ shortwave_countries.append('Romania')
 shortwave_countries.append('Albania')
 
 for country in list(reader.records()):
-#    print(country.attributes['GEOUNIT'])
+    print(country.attributes['GEOUNIT'])
     if country.attributes['GEOUNIT'] in str(shortwave_countries):
         plot_sw_countries.append(country.geometry)
 ax.add_geometries(plot_sw_countries, projection, facecolor=(0.4, 0.9, 0.9))
 
+print("plotting states")
+print(str(desired_states))
+print("plotting countries")
+desired_countries.append('United States of America')
 print(str(desired_countries))
 
 for country in list(reader.records()):
 #    print(country.attributes['GEOUNIT'])
     if country.attributes['GEOUNIT'] in str(desired_countries):
         plot_countries.append(country.geometry)
-
-print(plot_countries)
+#print("ploting countries")
+#print(plot_countries)
 
 ax.add_geometries(plot_countries, projection, facecolor=(0.9, 0.9, 0.9))
 
