@@ -11,8 +11,8 @@ from geopy.geocoders import Nominatim
 
 from pyhamtools import LookupLib, Callinfo
 
+import itertools
 import requests
-
 import sys
 
 import xml.dom.minidom
@@ -23,6 +23,12 @@ import xmltodict, json
 qrzlines = []
 with open('qrz.txt') as f:
     qrzlines = f.read().splitlines()
+
+progress = 0
+with open('progress.txt') as f:
+    progress = int(f.read().splitlines()[0])
+
+print("resuming from line",progress)
 
 apiusername=qrzlines[0]
 apipassword=qrzlines[1]
@@ -64,35 +70,31 @@ def GetCallSignInfo(callsign):
     my_lookuplib = LookupLib(lookuptype="qrz", username=apiusername, pwd=apipassword)
     cic = Callinfo(my_lookuplib)
 
-    if cic.is_valid_callsign(callsign):
-        print('making api request')
-        url = 'http://xmldata.qrz.com/xml/current/?s='+apikey+';callsign='+callsign
-        response = requests.get(url)
-        link='{http://xmldata.qrz.com}'
+    #if cic.is_valid_callsign(callsign):
+    url = 'http://xmldata.qrz.com/xml/current/?s='+apikey+';callsign='+callsign
+    response = requests.get(url)
+    link='{http://xmldata.qrz.com}'
 
-        root = ElementTree.fromstring(response.content)
+    root = ElementTree.fromstring(response.content)
 
-        contact_dict = {}
-        for child in root:
-            if(child.tag == link+'Callsign'):
-                for item in child:
-                    itemname = item.tag.replace(link,'')
-                    contact_dict[itemname] = item.text
+    contact_dict = {}
+    for child in root:
+        if(child.tag == link+'Callsign'):
+            for item in child:
+                itemname = item.tag.replace(link,'')
+                contact_dict[itemname] = item.text
 
-        callsign_dict[callsign] = contact_dict
+    callsign_dict[callsign] = contact_dict
     
-        with open('contacts.json', 'w') as outfile:
-            json.dump(callsign_dict,outfile)    
-
+    with open('contacts.json', 'w') as outfile:
+        json.dump(callsign_dict,outfile)    
         return(callsign_dict[callsign])
-    else:
-        return None
+    #else:
+    #    return None
 
 ####################################################
         
 GetApiKey()
-#GetCallSignInfo('N2NOM')
-#GetCallSignInfo('KE8KW')
 
 lat_list = []
 lon_list = []
@@ -100,6 +102,12 @@ callsigns = []
 
 desired_countries = []
 desired_states = []
+
+with open('seen_countries.txt') as f:
+    lines = f.read().splitlines()
+    for line in lines:
+        if line not in desired_countries:
+            desired_countries.append(line)
 
 if len(sys.argv) > 1:
     filename = sys.argv[1]
@@ -114,41 +122,55 @@ print("file loaded")
 
 #progress = 0
 
-for line in lineList:
-    #progress = progress + 1
-    #print(progress,"/",len(lineList))
-    #print(line)
-    if ("FT8" in line): 
-        #latitude, longitude = locator_to_latlong(line.split()[7])
-        callsign = line.split()[7]
-        if callsign == "CQ":
-            callsign = line.split()[8]
-    else:
-        #latitude, longitude = locator_to_latlong(line.split()[7])
-        callsign = line.split()[6]
+#for line in lineList:
+with open(filename) as f:
+    for line in itertools.islice(f,progress, None):
+        progress = progress + 1
+        #print(progress,"/",len(lineList))
+        #print(line)
+        with open("progress.txt", "w") as myfile:
+            myfile.write(str(progress))
 
-        if callsign == '<...>':
+        if ("FT8" in line): 
+            #latitude, longitude = locator_to_latlong(line.split()[7])
             callsign = line.split()[7]
+            #if callsign == "CQ":
+            #    callsign = line.split()[8]
+#        else:
+            #latitude, longitude = locator_to_latlong(line.split()[7])
+#            callsign = line.split()[6]
 
-    if callsign not in callsigns:
+#            if callsign == '<...>':
+#                callsign = line.split()[7]
 
-        callsigns.append(callsign)
-        try:
-            contact_dict = GetCallSignInfo(callsign)
-            if contact_dict['country'] == 'United States' and contact_dict['state'] not in desired_states:
-                #print(contact_dict['call'],contact_dict['lat'],contact_dict['lon'],contact_dict['state'])    
-                desired_states.append(contact_dict['state'])
-            else:
-                #print(contact_dict['call'],contact_dict['lat'],contact_dict['lon'],contact_dict['country'])
+        if callsign not in callsigns:
+            callsigns.append(callsign)
+            try:
+                contact_dict = GetCallSignInfo(callsign)
                 if contact_dict['country'] not in desired_countries:
+                    print("new country seen", contact_dict['country'])
+                    with open("seen_countries.txt", "a") as myfile:
+                        myfile.write(contact_dict['country']+'\n')
                     desired_countries.append(contact_dict['country'])
-                    #desired_countries.append('Norway')
             
-            lat_list.append(float(contact_dict['lat']))
-            lon_list.append(float(contact_dict['lon']))
-        except:
-            print('invalid callsign - ',callsign)
-    
+                lat_list.append(float(contact_dict['lat']))
+                lon_list.append(float(contact_dict['lon']))
+                with open("contacts_latlon.txt", "a") as myfile:
+                    myfile.write(callsign+','+str(float(contact_dict['lat']))+','+str(float(contact_dict['lon']))+','+contact_dict['country']+'\n')
+            except:
+                print('invalid callsign - ',callsign)
+                with open("invalid.txt", "a") as myfile:
+                    myfile.write(line)
+   
+with open('contacts_latlon.txt') as f:
+    lines = f.read().splitlines()
+    for line in lines:
+        lat_list.append(float(line.split(',')[1]))
+        lon_list.append(float(line.split(',')[2]))
+        country = line.split(',')[3]
+        if country not in desired_countries:
+            desired_countries.append(country)
+
 plt.clf()
 projection = ccrs.LambertConformal()
 
@@ -156,7 +178,9 @@ ax = plt.axes(projection=projection, aspect='auto')
 
 
 ax.plot(lon_list, lat_list, 'b.', ms=1.0)
-#ax.plot(la1k_lon, la1k_lat, 'o')
+#ax.plot(-32.049523,115.891969, 'r.', ms=2.0)
+#ax.plot(115.891969,-32.049523, 'r.', ms=2.0)
+#ax.plot(99.771, -37.216, 'ro', ms=1.0)
 
 #shapename = 'admin_1_states_provinces_lakes_shp'
 shapename = 'admin_0_countries'
@@ -165,57 +189,29 @@ reader = shpreader.Reader(shpreader.natural_earth(resolution='10m', category='cu
 
 countries = reader.records()
 
-#for country in countries:
-#     attribute = 'ADM0_A3'
-#     ADM0_A3 = country.attributes['ADM0_A3']
-
-
-#for country in countries:
-#    print(country.attributes.keys())
-#    try:
-#        print country.attributes['admin']
-#    except:
-#        print 'country name error'
-#    if country.attributes['admin'] == 'USA':
-#        ax.add_geometries(country.geometry, projection,
-#                          facecolor=(0, 0, 1),
-#                          label=country.attributes['admin'])
-#    else:
-#        ax.add_geometries(country.geometry, projection,
-#                          facecolor=(0, 1, 0),
-#                          label=country.attributes['admin'])
-
 
 ax.add_geometries(list(reader.geometries()), projection, facecolor=(0.7, 0.7, 0.7))
 
 plot_countries = []
-plot_sw_countries = []
 
-#shortwave contacts
-shortwave_countries = []
-shortwave_countries.append('Cuba')
-shortwave_countries.append('Brazil')
-shortwave_countries.append('Romania')
-shortwave_countries.append('Albania')
-
-for country in list(reader.records()):
-    print(country.attributes['GEOUNIT'])
-    if country.attributes['GEOUNIT'] in str(shortwave_countries):
-        plot_sw_countries.append(country.geometry)
-ax.add_geometries(plot_sw_countries, projection, facecolor=(0.4, 0.9, 0.9))
-
-print("plotting states")
-print(str(desired_states))
 print("plotting countries")
 desired_countries.append('United States of America')
-print(str(desired_countries))
+desired_countries.append('Czechia')
+desired_countries.append('Slovakia')
+desired_countries.append('Republic of Serbia')
+desired_countries.append('United Kingdom')
+desired_countries.append('Puerto Rico')
+desired_countries.append('United States Virgin Islands')
+desired_countries.append('Saint Martin')
+desired_countries.append('Guam')
+desired_countries.append('Saint Helena')
+
+#desired_countries.append('Curacao')
+#desired_countries.append('Sao Tome and Principe')
 
 for country in list(reader.records()):
-#    print(country.attributes['GEOUNIT'])
     if country.attributes['GEOUNIT'] in str(desired_countries):
         plot_countries.append(country.geometry)
-#print("ploting countries")
-#print(plot_countries)
 
 ax.add_geometries(plot_countries, projection, facecolor=(0.9, 0.9, 0.9))
 
