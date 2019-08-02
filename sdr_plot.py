@@ -210,12 +210,13 @@ desired_countries.append('Saint Kitts and Nevis')
 desired_countries.append('Gambia')
 desired_countries.append('Cook Islands')
 
-#desired_countries.append('Curacao')
-#desired_countries.append('Sao Tome and Principe')
+#desired_countries.append('Curacao') #TODO
+#desired_countries.append('Sao Tome and Principe') #TODO
 
 for country in list(reader.records()):
     if country.attributes['GEOUNIT'] in str(desired_countries):
-        plot_countries.append(country.geometry)
+        if country.attributes['GEOUNIT'] != "Sudan": #TODO
+            plot_countries.append(country.geometry)
 
 ax.add_geometries(plot_countries, projection, facecolor=(0.9, 0.9, 0.9))
 
