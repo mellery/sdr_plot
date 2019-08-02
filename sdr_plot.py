@@ -193,20 +193,6 @@ countries = reader.records()
 ax.add_geometries(list(reader.geometries()), projection, facecolor=(0.7, 0.7, 0.7))
 
 plot_countries = []
-#plot_sw_countries = []
-
-#shortwave contacts
-#shortwave_countries = []
-#shortwave_countries.append('Cuba')
-#shortwave_countries.append('Brazil')
-#shortwave_countries.append('Romania')
-#shortwave_countries.append('Albania')
-
-#for country in list(reader.records()):
-#    #print(country.attributes['GEOUNIT'])
-#    if country.attributes['GEOUNIT'] in str(shortwave_countries):
-#        plot_sw_countries.append(country.geometry)
-#ax.add_geometries(plot_sw_countries, projection, facecolor=(0.4, 0.9, 0.9))
 
 print("plotting countries")
 desired_countries.append('United States of America')
@@ -223,7 +209,6 @@ desired_countries.append('Kosovo')
 desired_countries.append('Saint Kitts and Nevis')
 desired_countries.append('Gambia')
 desired_countries.append('Cook Islands')
-
 
 #desired_countries.append('Curacao')
 #desired_countries.append('Sao Tome and Principe')
